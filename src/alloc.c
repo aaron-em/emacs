@@ -3455,6 +3455,17 @@ cleanup_vector (struct Lisp_Vector *vector)
 	    hash_table_allocated_bytes -= bytes;
 	  }
       }
+      break;
+    case PVEC_OBARRAY:
+      {
+	struct Lisp_Obarray *o = PSEUDOVEC_STRUCT (vector, Lisp_Obarray);
+	eassert (o->size_bits > 0);
+	xfree (o->buckets);
+	ptrdiff_t bytes = (sizeof *o->buckets) << o->size_bits;
+	/* FIXME: should have our own counter? */
+	hash_table_allocated_bytes -= bytes;
+      }
+      break;
     /* Keep the switch exhaustive.  */
     case PVEC_NORMAL_VECTOR:
     case PVEC_FREE:
@@ -7308,6 +7319,14 @@ process_mark_stack (ptrdiff_t base_sp)
 		      h->next_weak = weak_hash_tables;
 		      weak_hash_tables = h;
 		    }
+		  break;
+		}
+
+	      case PVEC_OBARRAY:
+		{
+		  struct Lisp_Obarray *o = (struct Lisp_Obarray *)ptr;
+		  set_vector_marked (ptr);
+		  mark_stack_push_values (o->buckets, 1 << o->size_bits);
 		  break;
 		}
 
